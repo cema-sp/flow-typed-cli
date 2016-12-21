@@ -4,7 +4,7 @@ var _node = require('../node.js');
 
 var _libDefs = require('../libDefs.js');
 
-var _semver = require('../semver.js');
+var _flowVersion = require('../flowVersion');
 
 var _git = require('../git.js');
 
@@ -12,6 +12,7 @@ jest.enableAutomock();
 jest.unmock('../libDefs.js');
 jest.unmock('../semver.js');
 jest.unmock('semver');
+jest.unmock('../flowVersion');
 
 /**
  * Jest's process of mocking in place fools Flow, so we use this as an explicit
@@ -173,7 +174,7 @@ describe('libDefs', function () {
       return {
         pkgName: name,
         pkgVersionStr: verStr,
-        flowVersion: (0, _semver.stringToVersion)(flowVerStr),
+        flowVersion: (0, _flowVersion.parseDirString)(flowVerStr),
         flowVersionStr: flowVerStr,
         path: '',
         testFilePaths: []

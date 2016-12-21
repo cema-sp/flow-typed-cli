@@ -39,7 +39,7 @@ var child_process = exports.child_process = {
         if (err) {
           rej(err);
         } else {
-          res({ stdout: stdout, stderr: stderr });
+          res({ stdout: new Buffer(stdout), stderr: new Buffer(stderr) });
         }
       });
     });

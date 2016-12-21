@@ -25,6 +25,10 @@ var _node = require("./node.js");
 
 var _semver3 = require("./semver.js");
 
+var _flowVersion2 = require("./flowVersion.js");
+
+var _validationErrors = require("./validationErrors");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var P = Promise;
@@ -412,7 +416,7 @@ function getLibDefs(defsDir, validationErrs) {
                                       case 9:
                                         error = "Expected only directories in the 'definitions/npm/@<scope>' directory!";
 
-                                        validationError(itemPath, error, validationErrs);
+                                        (0, _validationErrors.validationError)(itemPath, error, validationErrs);
 
                                       case 11:
                                       case "end":
@@ -445,7 +449,7 @@ function getLibDefs(defsDir, validationErrs) {
                   case 16:
                     error = "Expected only directories in the 'definitions/npm' directory!";
 
-                    validationError(itemPath, error, validationErrs);
+                    (0, _validationErrors.validationError)(itemPath, error, validationErrs);
 
                   case 18:
                   case "end":
@@ -466,95 +470,9 @@ function getLibDefs(defsDir, validationErrs) {
   }, null, this);
 };
 
-/**
- * Given the path to a flow directory within a package directory
- * (i.e. definitions/npm/pkgDir/flow_v0.24.0/), parse the flow directory name
- * into a Version.
- */
-var FLOW_VER = 'v([0-9]+)\.([0-9]+|x)\.([0-9]+|x)';
-var FLOW_DIR_NAME_RE = new RegExp("^flow_(all|((-)?" + FLOW_VER + "(-)?(" + FLOW_VER + ")?))$");
-
 function parsePkgFlowDirVersion(pkgFlowDirPath, validationErrs) {
   var pkgFlowDirName = _node.path.basename(pkgFlowDirPath);
-
-  function invalidDirectoryName() {
-    var repoPath = _node.path.resolve(pkgFlowDirPath, '..', '..', '..');
-    var pkgFlowDirContext = _node.path.relative(repoPath, pkgFlowDirPath);
-    var error = "Malformed flow-version directory name! Expected the name to be " + "formatted as 'flow_all' or " + "'flow_-?v<VERSION>' or " + "'flow_v<VERSION>-?' or " + "'flow_v<VERSION>-v<VERSION>' (for a range).";
-    validationError(pkgFlowDirContext, error, validationErrs);
-  }
-
-  var matches = pkgFlowDirName.match(FLOW_DIR_NAME_RE);
-  if (matches == null) {
-    invalidDirectoryName();
-    return (0, _semver3.emptyVersion)();
-  }
-
-  var upperBound = void 0;
-
-  var _matches = _slicedToArray(matches, 12),
-      _1 = _matches[0],
-      isAll = _matches[1],
-      _2 = _matches[2],
-      range = _matches[3],
-      major = _matches[4],
-      minor = _matches[5],
-      patch = _matches[6],
-      upRange = _matches[7],
-      _3 = _matches[8],
-      upMajor = _matches[9],
-      upMinor = _matches[10],
-      upPatch = _matches[11];
-
-  if (isAll === 'all') {
-    range = undefined;
-    major = 'x';
-    minor = 'x';
-    patch = 'x';
-  } else if (range && upRange) {
-    // flow_-v0.x.x-
-    invalidDirectoryName();
-    return (0, _semver3.emptyVersion)();
-  } else if (range && upMajor) {
-    // flow_-v0.x.xv0.x.x
-    invalidDirectoryName();
-    return (0, _semver3.emptyVersion)();
-  } else if (range) {
-    // flow_-0.x.x
-    range = "<=";
-    major = validateVersionNumPart(major, "major", pkgFlowDirPath, validationErrs);
-    minor = validateVersionPart(minor, "minor", pkgFlowDirPath, validationErrs);
-    patch = validateVersionPart(patch, "patch", pkgFlowDirPath, validationErrs);
-  } else if (upRange) {
-    // flow_0.x.x-
-    // flow_0.x.x-0.x.x (if upMajor)
-    range = ">=";
-    major = validateVersionNumPart(major, "major", pkgFlowDirPath, validationErrs);
-    minor = validateVersionPart(minor, "minor", pkgFlowDirPath, validationErrs);
-    patch = validateVersionPart(patch, "patch", pkgFlowDirPath, validationErrs);
-    if (upMajor) {
-      upRange = "<=";
-      upMajor = validateVersionNumPart(upMajor, "major", pkgFlowDirPath, validationErrs);
-      upMinor = validateVersionPart(upMinor, "minor", pkgFlowDirPath, validationErrs);
-      upPatch = validateVersionPart(upPatch, "patch", pkgFlowDirPath, validationErrs);
-      upperBound = {
-        range: upRange,
-        major: upMajor,
-        minor: upMinor,
-        patch: upPatch
-      };
-    }
-  } else {
-    // shouldn't happen
-    invalidDirectoryName();
-    return (0, _semver3.emptyVersion)();
-  }
-
-  var ver = { range: range, major: major, minor: minor, patch: patch, upperBound: upperBound };
-  if (!(0, _semver3.isSatVersion)(ver)) {
-    validationError(pkgFlowDirPath, 'Flow version is unsatisfiable!', validationErrs);
-  }
-  return ver;
+  return (0, _flowVersion2.parseDirString)(pkgFlowDirName, validationErrs);
 }
 
 /**
@@ -602,22 +520,22 @@ function parseLibDefsFromPkgDir(_ref, pkgDirPath, validationErrs) {
               flowDirs.push([pkgDirItemPath, parsePkgFlowDirVersion(pkgDirItemPath, validationErrs)]);
             } else {
               var error = 'Unexpected directory item';
-              validationError(pkgDirItemContext, error, validationErrs);
+              (0, _validationErrors.validationError)(pkgDirItemContext, error, validationErrs);
             }
           });
 
-          if (!(0, _semver3.disjointVersionsAll)(flowDirs.map(function (_ref2) {
+          if (!(0, _flowVersion2.disjointVersionsAll)(flowDirs.map(function (_ref2) {
             var _ref3 = _slicedToArray(_ref2, 2),
                 _ = _ref3[0],
                 ver = _ref3[1];
 
             return ver;
           }))) {
-            validationError(pkgDirPath, 'Flow versions not disjoint!', validationErrs);
+            (0, _validationErrors.validationError)(pkgDirPath, 'Flow versions not disjoint!', validationErrs);
           }
 
           if (flowDirs.length === 0) {
-            validationError(pkgDirPath, 'No libdef files found!', validationErrs);
+            (0, _validationErrors.validationError)(pkgDirPath, 'No libdef files found!', validationErrs);
           }
 
           libDefs = [];
@@ -667,7 +585,7 @@ function parseLibDefsFromPkgDir(_ref, pkgDirPath, validationErrs) {
                         }
                       } else {
                         var error = 'Unexpected directory item';
-                        validationError(flowDirItemContext, error, validationErrs);
+                        (0, _validationErrors.validationError)(flowDirItemContext, error, validationErrs);
                       }
                     };
 
@@ -682,7 +600,7 @@ function parseLibDefsFromPkgDir(_ref, pkgDirPath, validationErrs) {
                     if (pkgName !== 'ERROR') {
                       error = 'No libdef file found!';
 
-                      validationError(flowDirPath, error, validationErrs);
+                      (0, _validationErrors.validationError)(flowDirPath, error, validationErrs);
                     }
                     return _context11.abrupt("return");
 
@@ -692,7 +610,7 @@ function parseLibDefsFromPkgDir(_ref, pkgDirPath, validationErrs) {
                       pkgName: pkgName,
                       pkgVersionStr: pkgVersionStr,
                       flowVersion: flowVersion,
-                      flowVersionStr: (0, _semver3.versionToString)(flowVersion),
+                      flowVersionStr: (0, _flowVersion2.toDirString)(flowVersion),
                       path: libDefFilePath,
                       testFilePaths: testFilePaths
                     });
@@ -720,24 +638,25 @@ function parseLibDefsFromPkgDir(_ref, pkgDirPath, validationErrs) {
  * Given the path to a directory item in the 'definitions' directory, parse the
  * directory's name into a package name and version.
  */
-var REPO_DIR_ITEM_NAME_RE = /^(.*)_v([0-9]+)\.([0-9]+|x)\.([0-9]+|x)$/;
+var REPO_DIR_ITEM_NAME_RE = /^(.*)_v([0-9]+)\.([0-9]+|x)\.([0-9]+|x)(-.*)?$/;
 function parseRepoDirItem(dirItemPath, validationErrs) {
   var dirItem = _node.path.basename(dirItemPath);
   var itemMatches = dirItem.match(REPO_DIR_ITEM_NAME_RE);
   if (itemMatches == null) {
     var error = "'" + dirItem + "' is a malformed definitions/npm/ directory name! " + "Expected the name to be formatted as <PKGNAME>_v<MAJOR>.<MINOR>.<PATCH>";
-    validationError(dirItem, error, validationErrs);
+    (0, _validationErrors.validationError)(dirItem, error, validationErrs);
     var _pkgName = 'ERROR';
     var pkgVersion = (0, _semver3.emptyVersion)();
     return { pkgName: _pkgName, pkgVersion: pkgVersion };
   }
 
-  var _itemMatches = _slicedToArray(itemMatches, 5),
+  var _itemMatches = _slicedToArray(itemMatches, 6),
       _ = _itemMatches[0],
       pkgName = _itemMatches[1],
       major = _itemMatches[2],
       minor = _itemMatches[3],
-      patch = _itemMatches[4];
+      patch = _itemMatches[4],
+      prerel = _itemMatches[5];
 
   var item = _node.path.dirname(dirItemPath).split(_node.path.sep).pop();
   if (item.charAt(0) === '@') {
@@ -747,7 +666,11 @@ function parseRepoDirItem(dirItemPath, validationErrs) {
   minor = validateVersionPart(minor, "minor", dirItemPath, validationErrs);
   patch = validateVersionPart(patch, "patch", dirItemPath, validationErrs);
 
-  return { pkgName: pkgName, pkgVersion: { major: major, minor: minor, patch: patch } };
+  if (prerel != null) {
+    prerel = prerel.substr(1);
+  }
+
+  return { pkgName: pkgName, pkgVersion: { major: major, minor: minor, patch: patch, prerel: prerel } };
 }
 
 /**
@@ -757,8 +680,8 @@ var TEST_FILE_NAME_RE = /^test_.*\.js$/;
 function validateTestFile(testFilePath, context, validationErrs) {
   var testFileName = _node.path.basename(testFilePath);
   if (!TEST_FILE_NAME_RE.test(testFileName)) {
-    var error = "Malformed test file name! Test files must be formatted as test_(.*).js";
-    validationError(context, error, validationErrs);
+    var error = "Malformed test file name! Test files must be formatted as test_(.*).js: " + testFileName;
+    (0, _validationErrors.validationError)(context, error, validationErrs);
     return false;
   }
   return true;
@@ -772,7 +695,7 @@ function validateVersionNumPart(part, partName, context, validationErrs) {
   var num = parseInt(part, 10);
   if (String(num) !== part) {
     var error = "'" + context + "': Invalid " + partName + " number: '" + part + "'. Expected a number.";
-    validationError(context, error, validationErrs);
+    (0, _validationErrors.validationError)(context, error, validationErrs);
   }
   return num;
 }
@@ -786,20 +709,6 @@ function validateVersionPart(part, partName, context, validationErrs) {
     return part;
   }
   return validateVersionNumPart(part, partName, context, validationErrs);
-}
-
-/**
- * Helper function to extract the error-list from the validationErrs map, append
- * to it, then set it back in the map.
- */
-function validationError(errKey, errMsg, validationErrs) {
-  if (validationErrs) {
-    var errors = validationErrs.get(errKey) || [];
-    errors.push(errMsg);
-    validationErrs.set(errKey, errors);
-  } else {
-    throw new Error(errKey + ": " + errMsg);
-  }
 }
 
 /**
@@ -868,7 +777,6 @@ function writeVerbose(stream, msg) {
  * Note that this is mainly only useful while working on the flow-typed repo
  * itself. It is useless when running the npm-install CLI.
  */
-
 var GIT_REPO_DEFS_DIR = _node.path.join(GIT_REPO_DIR, 'definitions', 'npm');
 function getLocalLibDefs(validationErrs) {
   return regeneratorRuntime.async(function getLocalLibDefs$(_context14) {
@@ -1030,13 +938,34 @@ function filterLibDefs(defs, filter) {
 
     var filterFlowVerStr = filter.flowVersionStr;
     if (filterFlowVerStr) {
-      var defUpperFlow = def.flowVersion.upperBound;
-      if (defUpperFlow) {
-        var defLowerFlow = (0, _semver3.copyVersion)(def.flowVersion);
-        defLowerFlow.upperBound = undefined;
-        return _semver2.default.satisfies(filterFlowVerStr, (0, _semver3.versionToString)(defLowerFlow)) && _semver2.default.satisfies(filterFlowVerStr, (0, _semver3.versionToString)(defUpperFlow));
-      } else {
-        return _semver2.default.satisfies(filterFlowVerStr, def.flowVersionStr);
+      var _flowVersion = def.flowVersion;
+
+      switch (_flowVersion.kind) {
+        case 'all':
+          return _semver2.default.satisfies(filterFlowVerStr, def.flowVersionStr);
+        case 'specific':
+          return _semver2.default.satisfies(filterFlowVerStr, def.flowVersionStr);
+        case 'ranged':
+          var upper = _flowVersion.upper;
+
+          if (upper) {
+            var lowerSpecific = {
+              kind: 'ranged',
+              upper: null,
+              lower: _flowVersion.lower
+            };
+            var lowerSpecificSemver = (0, _flowVersion2.toSemverString)(lowerSpecific);
+            var upperSpecificSemver = (0, _flowVersion2.toSemverString)({
+              kind: 'specific',
+              ver: upper
+            });
+            return _semver2.default.satisfies(filterFlowVerStr, lowerSpecificSemver) && _semver2.default.satisfies(filterFlowVerStr, upperSpecificSemver);
+          } else {
+            return _semver2.default.satisfies(filterFlowVerStr, def.flowVersionStr);
+          }
+
+        default:
+          _flowVersion;throw new Error('Unexpected FlowVersion kind!');
       }
     }
 

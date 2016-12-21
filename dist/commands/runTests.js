@@ -19,19 +19,19 @@ var _github = require("../lib/github.js");
 
 var _libDefs = require("../lib/libDefs.js");
 
-var _semver = require("../lib/semver.js");
-
 var _isInFlowTypedRepo = require("../lib/isInFlowTypedRepo");
 
 var _isInFlowTypedRepo2 = _interopRequireDefault(_isInFlowTypedRepo);
+
+var _flowVersion = require("../lib/flowVersion");
 
 var _request = require("request");
 
 var _request2 = _interopRequireDefault(_request);
 
-var _semver2 = require("semver");
+var _semver = require("semver");
 
-var semver = _interopRequireWildcard(_semver2);
+var semver = _interopRequireWildcard(_semver);
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -73,7 +73,7 @@ function getTestGroups(repoDirPath) {
         case 2:
           libDefs = _context.sent;
           return _context.abrupt("return", libDefs.map(function (libDef) {
-            var groupID = libDef.pkgName + "_" + libDef.pkgVersionStr + _node.path.sep + "flow_" + ("" + libDef.flowVersionStr);
+            var groupID = libDef.pkgName + "_" + libDef.pkgVersionStr + _node.path.sep + ("" + libDef.flowVersionStr);
             return {
               id: groupID,
               testFilePaths: libDef.testFilePaths,
@@ -348,7 +348,7 @@ function runTestGroup(testGroup) {
           _context8.prev = 9;
           _context8.next = 12;
           return regeneratorRuntime.awrap(function _callee5() {
-            var destLibDefPath, destFlowConfigPath, flowConfigData, flowVersionsToRun, testBatch;
+            var destLibDefPath, destFlowConfigPath, flowConfigData, testGrpFlowSemVerRange, flowVersionsToRun, testBatch;
             return regeneratorRuntime.async(function _callee5$(_context7) {
               while (1) {
                 switch (_context7.prev = _context7.next) {
@@ -400,31 +400,14 @@ function runTestGroup(testGroup) {
 
                     // For each compatible version of Flow, run `flow check` and verify there
                     // are no errors.
+                    testGrpFlowSemVerRange = (0, _flowVersion.toSemverString)(testGroup.flowVersion);
                     flowVersionsToRun = orderedFlowVersions.filter(function (flowVer) {
-                      if (testGroup.flowVersion === "all") {
-                        return true;
-                      }
-
-                      var testGrpUpperBound = testGroup.flowVersion.upperBound;
-                      testGroup.flowVersion.upperBound = undefined;
-                      var testGrpLowerBoundStr = (0, _semver.versionToString)(testGroup.flowVersion);
-                      var testGrpUpperBoundStr = testGrpUpperBound ? (0, _semver.versionToString)(testGrpUpperBound) : undefined;
-                      testGroup.flowVersion.upperBound = testGrpUpperBound;
-
-                      if (semver.satisfies(flowVer, testGrpLowerBoundStr)) {
-                        if (testGrpUpperBoundStr) {
-                          return semver.satisfies(flowVer, testGrpUpperBoundStr);
-                        } else {
-                          return true;
-                        }
-                      }
-
-                      return false;
+                      return semver.satisfies(flowVer, testGrpFlowSemVerRange);
                     });
 
-                  case 10:
+                  case 11:
                     if (!(flowVersionsToRun.length > 0)) {
-                      _context7.next = 16;
+                      _context7.next = 17;
                       break;
                     }
 
@@ -432,7 +415,7 @@ function runTestGroup(testGroup) {
                     testBatch = flowVersionsToRun.slice(0, Math.min(flowVersionsToRun.length, 5)).map(function (group) {
                       return flowVersionsToRun.shift(), group;
                     });
-                    _context7.next = 14;
+                    _context7.next = 15;
                     return regeneratorRuntime.awrap(P.all(testBatch.map(function _callee4(flowVer) {
                       var testRunId, _ref4, stdErrOut, errCode, execError;
 
@@ -487,16 +470,16 @@ function runTestGroup(testGroup) {
                       }, null, _this2);
                     })));
 
-                  case 14:
-                    _context7.next = 10;
+                  case 15:
+                    _context7.next = 11;
                     break;
 
-                  case 16:
+                  case 17:
                     return _context7.abrupt("return", {
                       v: errors
                     });
 
-                  case 17:
+                  case 18:
                   case "end":
                     return _context7.stop();
                 }

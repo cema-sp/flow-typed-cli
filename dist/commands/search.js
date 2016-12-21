@@ -9,6 +9,8 @@ exports.run = run;
 
 var _libDefs = require("../lib/libDefs.js");
 
+var _flowVersion = require("../lib/flowVersion");
+
 var _table = require("table");
 
 var _table2 = _interopRequireDefault(_table);
@@ -17,14 +19,16 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _formatDefTable(defs) {
   var formatted = [['Name', 'Package Version', 'Flow Version']].concat(defs.map(function (def) {
-    return [def.pkgName, def.pkgVersionStr, def.flowVersionStr];
+    return [def.pkgName, def.pkgVersionStr, (0, _flowVersion.toSemverString)(def.flowVersion)];
   }));
   if (formatted.length === 1) {
     return "No definitions found, sorry!";
   } else {
     return "\nFound definitions:\n" + (0, _table2.default)(formatted);
   }
-};
+}
+
+;
 
 var name = exports.name = "search";
 var description = exports.description = "Performs a simple search (by name) of available libdefs";
